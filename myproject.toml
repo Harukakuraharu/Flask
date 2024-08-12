@@ -1,0 +1,10 @@
+# pytest
+[tool.pytest.ini_options]
+testpaths = ["app/tests"]
+
+#pylint
+[tool.pylint]
+ignore = [".git", "__pycache__", "migrations", ".venv"]
+load-plugins = ["pylint_pytest"]
+max-line-length = 79
+disable = ["C0114", "C0115", "C0116", "W1514", "W3101", "R0903"]

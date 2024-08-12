@@ -1,40 +1,54 @@
-from typing import Optional, Type
+from typing import Annotated, Type
 
 import pydantic
+from pydantic import EmailStr
+from pydantic.functional_validators import AfterValidator
+
+
+def secure_password(password: str):
+    assert len(password) >= 8, "Password is too short"
+    return password
+
+
+Password = Annotated[str, AfterValidator(secure_password)]
 
 
 class BaseUser(pydantic.BaseModel):
-    name: Optional[str]
-    email: Optional[str]
-    password: Optional[str]
-
-    @pydantic.field_validator("password")
-    @classmethod
-    def secure_password(cls, value):
-        if len(value) < 8:
-            raise ValueError("Password is too short")
-        return value
-
-
-class BaseAdvertisement(pydantic.BaseModel):
-    title: Optional[str]
-    description: Optional[str]
+    name: str
+    email: EmailStr
 
 
 class CreateUser(BaseUser):
-    name: str
-    password: str
+    password: Password
 
 
-class CreateAdvertisement(BaseAdvertisement):
+class ResponseUser(BaseUser):
+    id: int
+
+
+class BaseAdvertisement(pydantic.BaseModel):
     title: str
     description: str
     user_id: int
 
 
-class UpdateAdvertisement(BaseAdvertisement):
-    title: Optional[str] = None
-    description: Optional[str] = None
+class CreateAdvertisement(BaseAdvertisement):
+    pass
 
 
-Schema = Type[CreateUser] | Type[CreateAdvertisement] | Type[UpdateAdvertisement]
+class ResponseAdvertisement(BaseAdvertisement):
+    id: int
+
+
+class UpdateAdvertisement(pydantic.BaseModel):
+    title: str | None = None
+    description: str | None = None
+
+
+Schema = (
+    Type[CreateUser]
+    | Type[ResponseUser]
+    | Type[CreateAdvertisement]
+    | Type[ResponseAdvertisement]
+    | Type[UpdateAdvertisement]
+)
