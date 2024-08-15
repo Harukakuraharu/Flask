@@ -13,7 +13,8 @@ from sqlalchemy.orm import Session
 from utils import tmp_database
 
 from app import create_app
-
+from flask.testing import FlaskClient
+from flask import Flask
 
 @pytest.fixture(scope="session", autouse=True)
 def postgres_temlate(pg_url: str) -> Iterator[str]:
@@ -39,7 +40,7 @@ def postgres(postgres_temlate: str) -> Iterator[str]:
 
 
 @pytest.fixture
-def app(postgres: str):
+def app(postgres: str) -> Iterator[Flask]:
     config.POSTGRES_DB = urlsplit(postgres).path[1:]
     project_app = create_app(config.dsn)
     project_app.config.update(
@@ -52,12 +53,12 @@ def app(postgres: str):
 
 
 @pytest.fixture
-def client(app):
+def client(app: Flask)-> FlaskClient:
     return app.test_client()
 
 
 @pytest.fixture
-def fakery():
+def fakery()-> Faker:
     return Faker()
 
 
@@ -79,10 +80,15 @@ def factory(session: Session):
 
 
 @pytest.fixture
-def user_factory(session: Session, factory: Callable, fakery: Faker):
-    user = factory(
-        User, email=fakery.email(), password=fakery.password(), name=fakery.first_name()
-    )
-    user.password = hash_password(user.password)
-    session.commit()
-    return user
+def user_factory(session: Session, factory: Callable, fakery: Faker, client: FlaskClient) -> dict:
+    def wrapper():
+        password = fakery.password()
+        email = fakery.email()
+        user = factory(User, email=email, password=password, name=fakery.first_name())
+        user.password = hash_password(user.password)
+        session.commit()
+        response = client.post("/login", json={"email": email, "password": password})
+        token = response.json.get("access_token")
+        return {"user": user, "password": password, "token": token}
+
+    return wrapper
